@@ -5,6 +5,7 @@ from optparse import OptionParser
 import urllib2
 import urlparse
 import unittest
+import BaseHTTPServer
 
 #class test_get_valid_url(unittest.TestCase):
 #      def test(self): 
@@ -47,6 +48,9 @@ def get_response(url):
     except urllib2.HTTPError,e:
         response = False
         error = e.code
+    except urllib2.URLError,e:
+        response = False
+        error = False
     return response, error
       
 def test_url(url):
@@ -66,11 +70,13 @@ def main():
       for url in arguments:
           url = get_valid_url(url)
           compression, code, real_url,redirect = test_url(url)
-          print 'Código de respuesta %s' % code
+          url_redirect = "" 
           if redirect: 
-             print 'Redirección: %s' % redirect 
-             print 'Url real %s' % real_url
-          if (code==200):
+	     code = redirect
+	     url_redirect = real_url
+          message_short, message_long = BaseHTTPServer.BaseHTTPRequestHandler.responses[code]
+          print str(code) + " : " + message_short + " " + url_redirect
+          if (code in [200,301,302]):
              if compression :
                 print '%s soporta compresión HTTP' % url
              else:
@@ -80,4 +86,4 @@ def main():
       p.print_help()
 
 if __name__ == "__main__":
-   main() 
+   main()
