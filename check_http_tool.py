@@ -41,13 +41,15 @@ class UrlTest():
 		self.content_encoding=False
 		self.url = ""
 	        self.code=0
-		self.accept_encoding= ""
-	        self.user_Agent=""
+		self.accept_encoding=  ('Accept-encoding', 'gzip,deflate')
+	        self.user_agent= ('User-Agent', 'Mozilla/5.0 (X11; U; Linux x86_64; es-AR; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3')
 		self.error= False
 	def test(self):
                 request = urllib2.Request(self.url)
-                request.add_header('Accept-encoding', 'gzip,deflate')
-                request.add_header('User-Agent', 'Mozilla/5.0 (X11; U; Linux x86_64; es-AR; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3')
+		header_key,header_val= self.accept_encoding
+                request.add_header(header_key, header_val)
+		header_key,header_val= self.user_agent
+                request.add_header(header_key, header_val)
     		rh = RedirectHandler()
     		redirect = []
     		time_download=0
