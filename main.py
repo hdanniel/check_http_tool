@@ -38,7 +38,37 @@ class UrlTest():
 	def __init__(self):
         	self.time=0
 		self.redirect=[]
-		self.encoding=""
+		self.content_encoding=False
+		self.url = ""
+	        self.code=0
+		self.accept_encoding= ""
+	        self.user_Agent=""
+		self.error= False
+	def test(self):
+                request = urllib2.Request(self.url)
+                request.add_header('Accept-encoding', 'gzip,deflate')
+                request.add_header('User-Agent', 'Mozilla/5.0 (X11; U; Linux x86_64; es-AR; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3')
+    		rh = RedirectHandler()
+    		redirect = []
+    		time_download=0
+    		opener = urllib2.build_opener(rh)
+    		urllib2.install_opener(opener)
+    		try:
+        	    time_start=time.time()
+                    response = urllib2.urlopen(request)
+                    time_end=time.time()
+                    self.time = time_end - time_start
+        	    if response:
+           	       self.error = False
+                       self.redirect = rh.redirect_list
+		       self.content_encoding=response.info().get('Content-Encoding')
+		       self.code = response.code
+                except urllib2.HTTPError,e:
+                   response = False
+        	   self.error = e.code
+                except urllib2.URLError,e:
+                   response = False
+                   self.error = False
 
 def get_valid_url(url):
     try:
@@ -50,50 +80,19 @@ def get_valid_url(url):
     except AttributeError:
            return False 
 
-def get_response(url):
-    request = urllib2.Request(url)
-    request.add_header('Accept-encoding', 'gzip,deflate') 
-    request.add_header('User-Agent', 'Mozilla/5.0 (X11; U; Linux x86_64; es-AR; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3')
-    rh = RedirectHandler()
-    redirect = []
-    time_download=0
-    opener = urllib2.build_opener(rh)
-    urllib2.install_opener(opener)
-    url_test = UrlTest() 
-    try:
-	time_start=time.time()
-        response = urllib2.urlopen(request)
-	time_end=time.time()
-	url_test.time = time_end - time_start
-        if response: 
-           url_test.error = False
-           url_test.redirect = rh.redirect_list
-    except urllib2.HTTPError,e:
-        response = False
-        url_test.error = e.code
-    except urllib2.URLError,e:
-        response = False
-        url_test.error = False
-    return response, url_test 
-      
-def test_url(url):
-    #response,error,redirect,time_download = get_response(url)
-    response,url_test = get_response(url)
-    redirect = url_test.redirect
-    time_download = url_test.time
-    error = url_test.error
-    if (response):
-       return response.info().get('Content-Encoding'), response.code, redirect, time_download
-    else:
-       return False,error,False,0
-
 def main():
    p = OptionParser(description="HTTP Compression Test", prog="front.py", version="0.1", usage="%prog [url]")
    options, arguments = p.parse_args()
    if len(arguments) > 0:
       for url in arguments:
           url = get_valid_url(url)
-          compression, code, redirect, response_time = test_url(url)
+	  url_test = UrlTest()
+	  url_test.url = url
+	  url_test.test()
+	  compression = url_test.content_encoding
+	  code = url_test.code
+	  redirect = url_test.redirect
+	  response_time = url_test.time
           message_short, message_long = BaseHTTPServer.BaseHTTPRequestHandler.responses[code]
 	  print 'URL: %s' % (url)
           print 'Respuesta: %s - %s' % (str(code), message_short)
