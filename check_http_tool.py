@@ -7,13 +7,33 @@ import urlparse
 import unittest
 import BaseHTTPServer
 import time
+#from HTMLParser import HTMLParser
+from sgmllib import SGMLParser
 
-#class test_get_valid_url(unittest.TestCase):
-#      def test(self): 
-          #self.assert_(get_valid_url('www.google.com')) 
-          #self.assert_(get_valid_url('http://www.google.com')) 
-#          self.assert_(get_valid_url('test')) 
-#          self.assert_(get_valid_url(1)) 
+class JsCssParser(SGMLParser):
+      def reset(self):
+          SGMLParser.reset(self)
+          self.jscss=[]
+      def start_link(self,attrs):
+          style=False
+          for k,v in attrs:
+               if (k=='rel') and (v=='stylesheet'):
+                  style=True
+               if (k=='type') and (v=='text/css'):
+                  style=True
+          if style:
+             href = [v for k, v in attrs if k == 'href']
+             if href:
+                self.jscss.extend(href)
+      def start_script(self,attrs):
+          script=False
+          for k,v in attrs:
+               if (k=='type') and (v=='text/javascript'):
+                  script=True
+          if script:
+             src = [v for k, v in attrs if k == 'src']
+             if src:
+                self.jscss.extend(src)
 
 
 class RedirectHandler(urllib2.HTTPRedirectHandler):
@@ -65,6 +85,7 @@ class UrlTest():
                        self.redirect = rh.redirect_list
 		       self.content_encoding=response.info().get('Content-Encoding')
 		       self.code = response.code
+		       print response.read()
                 except urllib2.HTTPError,e:
                    response = False
         	   self.error = e.code
