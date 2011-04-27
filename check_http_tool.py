@@ -9,6 +9,16 @@ import BaseHTTPServer
 import time
 #from HTMLParser import HTMLParser
 from sgmllib import SGMLParser
+import StringIO
+import gzip
+
+color_green=";32m"
+color_green_normal=";92m"
+color_red=";31m"
+color_blue=";34m"
+color_yellow=";33m"
+color_default="m"
+
 
 class JsCssParser(SGMLParser):
       def reset(self):
@@ -52,18 +62,26 @@ class RedirectHandler(urllib2.HTTPRedirectHandler):
                 result.redirect = code                                
 		#self.redirect_list.append((code,result.geturl()))
 		self.redirect_list.append((code,headers['Location']))
-		return result 
+		return result
+
+def gunzip_read(data_gz):
+    stream_gz = StringIO.StringIO(data_gz)
+    gz = gzip.GzipFile(fileobj=stream_gz)
+    return gz.read()
+    
 
 class UrlTest():
 	def __init__(self):
         	self.time=0
 		self.redirect=[]
 		self.content_encoding=False
+		self.content_type=""
 		self.url = ""
 	        self.code=0
 		self.accept_encoding=  ('Accept-encoding', 'gzip,deflate')
 	        self.user_agent= ('User-Agent', 'Mozilla/5.0 (X11; U; Linux x86_64; es-AR; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3')
 		self.error= False
+		self.content = []
 	def test(self):
                 request = urllib2.Request(self.url)
 		header_key,header_val= self.accept_encoding
@@ -84,11 +102,16 @@ class UrlTest():
            	       self.error = False
                        self.redirect = rh.redirect_list
 		       self.content_encoding=response.info().get('Content-Encoding')
+		       self.content_type=response.info().get('Content-Type')
 		       self.code = response.code
-		       print response.read()
+		       self.content = response.read()
+		       if self.content_encoding:
+		          self.content=gunzip_read(self.content)
+
                 except urllib2.HTTPError,e:
                    response = False
         	   self.error = e.code
+        	   self.code = e.code
                 except urllib2.URLError,e:
                    response = False
                    self.error = False
@@ -113,12 +136,12 @@ def main():
 	  url_test.url = url
 	  url_test.test()
 	  compression = url_test.content_encoding
-	  code = url_test.code
 	  redirect = url_test.redirect
 	  response_time = url_test.time
-          message_short, message_long = BaseHTTPServer.BaseHTTPRequestHandler.responses[code]
 	  print 'URL: %s' % (url)
-          print 'Respuesta: %s - %s' % (str(code), message_short)
+          if url_test.code:
+             message_short, message_long = BaseHTTPServer.BaseHTTPRequestHandler.responses[url_test.code]
+             print 'Respuesta: %s - %s' % (str(url_test.code), message_short)
 	  if redirect:
 	     message_redirect = url 
              for redirect_code,redirect_url in redirect[::-1]:
@@ -126,15 +149,41 @@ def main():
 	         message_redirect += message_redirect_code
 	         message_redirect += " -> " 
 	         message_redirect += redirect_url
-	     message_redirect_code = " ("+str(code)+") "
+	     message_redirect_code = " ("+str(url_test.code)+") "
 	     message_redirect += message_redirect_code
 	     print message_redirect
-          if (code in [200,301,302]):
+          if (url_test.code in [200,301,302]):
              print 'Tiempo de Respuesta: %.2f ms' % (response_time*1000)
              if compression :
-                print '%s soporta compresión HTTP' % url
+                print chr(27)+"[0"+color_green+url+" usa compresión http"+chr(27)+"[0m" 
+                #print '%s soporta compresión HTTP' % url
              else:
-                print '%s no soporta compresión HTTP' % url
+                print chr(27)+"[0"+color_red+url+" usa compresión http"+chr(27)+"[0m" 
+                #print '%s no soporta compresión HTTP' % url
+             #result.content = result.content.replace("<a&hellip;","")
+	     if url_test.content_type.startswith('text/html'):
+	        parser = JsCssParser()
+                parser.feed(url_test.content)
+                parser.close()
+                jscss_list=parser.jscss
+	        if len(jscss_list)>0:
+                   print "Test de Compresión de Componentes"
+                for jscss in jscss_list:
+                    url_jscss=""
+                    if jscss.startswith('http://'):
+                       url_jscss=jscss
+                    else:
+                       url_jscss=urlparse.urljoin(url,jscss)
+		    url_component = UrlTest()
+		    url_component.url = url_jscss
+		    url_component.test()
+		    if url_component.content_encoding:
+                       message_compression = "OK"
+		       color=color_green
+                    else:
+                       message_compression = "NO"
+		       color=color_red
+                    print chr(27)+"[0"+color+url_jscss+"\t"+message_compression+chr(27)+"[0m" 
 
    else:
       p.print_help()
